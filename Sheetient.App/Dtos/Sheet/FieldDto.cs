@@ -5,14 +5,14 @@ using Sheetient.Domain.Enums;
 namespace Sheetient.App.Dtos.Sheet
 {
     [JsonConverter(typeof(FieldConverter))]
-    public abstract class FieldDto
+    public abstract record FieldDto
     {
-        public int Id { get; set; }
-        public abstract FieldType FieldType { get; set; }
-        public int PageId { get; set; }
-        public int X { get; set; }
-        public int Y { get; set; }
-        public int Width { get; set; }
-        public int Height { get; set; }
+        public int Id { get; init; }
+        public abstract FieldType FieldType { get; init; }
+        public int PageId { get; init; }
+        public int X { get; init; }
+        public int Y { get; init; }
+        public int Width { get; init; }
+        public int Height { get; init; }
     }
 }

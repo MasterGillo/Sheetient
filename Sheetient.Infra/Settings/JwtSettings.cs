@@ -1,8 +1,8 @@
 ﻿using Sheetient.Domain.Interfaces;
 
-namespace Sheetient.App.Settings
+namespace Sheetient.Infra.Settings
 {
-    public class JwtSettings : IJwtSettings
+    public record JwtSettings : IJwtSettings
     {
         public required string Issuer { get; init; }
         public required string Audience { get; init; }

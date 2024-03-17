@@ -5,12 +5,12 @@ using Sheetient.App.Mapping;
 
 namespace Sheetient.App.Dtos.Sheet
 {
-    public class SheetDto : IMapping<Domain.Entities.Sheet>
+    public record SheetDto : IMapping<Domain.Entities.Sheet>
     {
-        public int Id { get; set; }
-        public required string Name { get; set; }
-        public string? Description { get; set; }
-        public List<PageDto> Pages { get; set; } = [];
+        public int Id { get; init; }
+        public required string Name { get; init; }
+        public string? Description { get; init; }
+        public List<PageDto> Pages { get; init; } = [];
 
         public void Mapping(Profile profile)
         {

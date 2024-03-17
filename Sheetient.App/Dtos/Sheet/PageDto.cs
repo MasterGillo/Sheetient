@@ -3,20 +3,20 @@ using Sheetient.Domain.Entities;
 
 namespace Sheetient.App.Dtos.Sheet
 {
-    public class PageDto : IMapping<Page>
+    public record PageDto : IMapping<Page>
     {
-        public int Id { get; set; }
-        public int SheetId { get; set; }
-        public required string Name { get; set; }
-        public required string Colour { get; set; }
-        public int Width { get; set; }
-        public int Height { get; set; }
-        public bool ShowGrid { get; set; }
-        public required string GridColour { get; set; }
-        public int GridSpacingX { get; set; }
-        public int GridSpacingY { get; set; }
-        public int Order { get; set; }
+        public int Id { get; init; }
+        public int SheetId { get; init; }
+        public required string Name { get; init; }
+        public required string Colour { get; init; }
+        public int Width { get; init; }
+        public int Height { get; init; }
+        public bool ShowGrid { get; init; }
+        public required string GridColour { get; init; }
+        public int GridSpacingX { get; init; }
+        public int GridSpacingY { get; init; }
+        public int Order { get; init; }
 
-        public List<FieldDto> Fields { get; set; } = [];
+        public List<FieldDto> Fields { get; init; } = [];
     }
 }

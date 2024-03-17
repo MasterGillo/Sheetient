@@ -5,8 +5,8 @@ namespace Sheetient.App.Services.Interfaces
     public interface IAuthService
     {
         Task Register(AuthRegisterRequestDto authRegisterRequestDto);
-        Task<AuthLoginResponseDto> Login(AuthLoginRequestDto authLoginRequestDto);
-        Task<AuthRefreshResponseDto> Refresh(AuthRefreshRequestDto authRefreshRequestDto);
+        Task<AuthTokenResponseDto> Login(AuthLoginRequestDto authLoginRequestDto);
+        Task<AuthTokenResponseDto> Refresh(string refreshToken);
         Task Revoke();
     }
 }

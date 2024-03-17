@@ -6,6 +6,8 @@ using Sheetient.Domain.Entities.Identity;
 using Sheetient.Domain.Interfaces;
 using Sheetient.Infra.Data;
 using Sheetient.Infra.Repositories;
+using Sheetient.Infra.Settings;
+using Sheetient.Infra.TokenProviders;
 
 namespace Sheetient.Infra
 {
@@ -13,6 +15,10 @@ namespace Sheetient.Infra
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
+            var jwtSection = configuration.GetSection("Jwt");
+            services.Configure<JwtSettings>(jwtSection);
+            var jwtSettings = jwtSection.Get<JwtSettings>();
+
             services.AddTransient<IUnitOfWork, UnitOfWork>();
             services.AddTransient<IApplicationDbContext>(provider => provider.GetService<ApplicationDbContext>()!);
 
@@ -32,7 +38,9 @@ namespace Sheetient.Infra
             })
             .AddRoles<Role>()
             .AddEntityFrameworkStores<ApplicationDbContext>()
-            .AddDefaultTokenProviders();
+            .AddDefaultTokenProviders()
+            .AddTokenProvider<AccessTokenProvider<User>>(jwtSettings?.AccessTokenName ?? "accessToken")
+            .AddTokenProvider<RefreshTokenProvider<User>>(jwtSettings?.RefreshTokenName ?? "refreshToken");
 
             return services;
         }

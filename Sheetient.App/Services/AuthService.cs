@@ -9,16 +9,18 @@ using Sheetient.App.Settings;
 using Sheetient.Domain.Entities.Identity;
 using System.Net.Mail;
 using System.Security.Claims;
-using System.Text;
+using System.Security.Cryptography;
 
 namespace Sheetient.App.Services
 {
     public class AuthService(
         UserManager<User> userManager,
         IOptionsSnapshot<JwtSettings> jwtSettings,
+        IOptionsSnapshot<KeySettings> keySettings,
         IUserService userService) : IAuthService
     {
         private readonly JwtSettings _jwtSettings = jwtSettings.Value;
+        private readonly KeySettings _keySettings = keySettings.Value;
         public async Task Register(AuthRegisterRequestDto authRegisterRequestDto)
         {
             var user = new User
@@ -29,7 +31,7 @@ namespace Sheetient.App.Services
             await userManager.CreateAsync(user, authRegisterRequestDto.Password);
         }
 
-        public async Task<AuthLoginResponseDto> Login(AuthLoginRequestDto authLoginRequestDto)
+        public async Task<AuthTokenResponseDto> Login(AuthLoginRequestDto authLoginRequestDto)
         {
             var user =
                 (MailAddress.TryCreate(authLoginRequestDto.UsernameOrEmail, out _)
@@ -43,27 +45,23 @@ namespace Sheetient.App.Services
                 throw new NotFoundException("Invalid credentials.");
             }
 
-            return await GenerateTokenResponse<AuthLoginResponseDto>(user);
+            return await GenerateTokenResponse(user, authLoginRequestDto.RememberMe);
         }
 
-        public async Task<AuthRefreshResponseDto> Refresh(AuthRefreshRequestDto authRefreshRequestDto)
+        public async Task<AuthTokenResponseDto> Refresh(string refreshToken)
         {
-            var username = await GetUsernameFromExpiredToken(authRefreshRequestDto.AccessToken);
+            var decryptedRefreshToken = DecryptToken(refreshToken);
+
+            var tokenHandler = new JsonWebTokenHandler();
+            var jwt = tokenHandler.ReadJsonWebToken(decryptedRefreshToken);
+            var username = jwt.GetClaim(ClaimTypes.Name).Value;
+            var isPersistent = jwt.GetClaim(ClaimTypes.IsPersistent).Value == true.ToString();
             var user = (await userManager.FindByNameAsync(username))
                 ?? throw new UnauthorizedException("Invalid token.");
 
-            var verified = await userManager.VerifyUserTokenAsync(
-                user,
-                _jwtSettings.TokenProvider,
-                _jwtSettings.Purpose,
-                authRefreshRequestDto.RefreshToken);
+            await userManager.VerifyUserTokenAsync(user, _jwtSettings.RefreshTokenName, _jwtSettings.RefreshTokenName, decryptedRefreshToken);
 
-            if (!verified)
-            {
-                throw new UnauthorizedException("Invalid token.");
-            }
-
-            return await GenerateTokenResponse<AuthRefreshResponseDto>(user);
+            return await GenerateTokenResponse(user, isPersistent);
         }
 
         public async Task Revoke()
@@ -71,75 +69,50 @@ namespace Sheetient.App.Services
             var user = (await userManager.FindByNameAsync(userService.UserName))
                 ?? throw new UnauthorizedException("Invalid token.");
 
-            await userManager.RemoveAuthenticationTokenAsync(user, _jwtSettings.TokenProvider, _jwtSettings.Purpose);
+            await userManager.RemoveAuthenticationTokenAsync(user, _jwtSettings.RefreshTokenName, _jwtSettings.RefreshTokenName);
         }
 
-        private async Task<T> GenerateTokenResponse<T>(User user) where T : AuthTokenResponseBase, new()
+        private async Task<AuthTokenResponseDto> GenerateTokenResponse(User user, bool rememberMe)
         {
-            var accessToken = await GenerateAccessToken(user);
-            var refreshToken = await userManager.GenerateUserTokenAsync(user, _jwtSettings.TokenProvider, _jwtSettings.Purpose);
+            var accessToken = await userManager.GenerateUserTokenAsync(user, _jwtSettings.AccessTokenName, _jwtSettings.AccessTokenName);
 
-            await userManager.SetAuthenticationTokenAsync(user, _jwtSettings.TokenProvider, _jwtSettings.Purpose, refreshToken);
-
-            return new T
+            var refreshToken = await userManager.GenerateUserTokenAsync(user, _jwtSettings.RefreshTokenName, _jwtSettings.RefreshTokenName + (rememberMe ? "_persistent" : string.Empty));
+            await userManager.SetAuthenticationTokenAsync(user, _jwtSettings.RefreshTokenName, _jwtSettings.RefreshTokenName, refreshToken);
+            var encryptedRefreshToken = EncryptToken(refreshToken);
+            return new AuthTokenResponseDto
             {
                 AccessToken = accessToken,
-                RefreshToken = refreshToken
+                RefreshToken = encryptedRefreshToken,
+                RememberMe = rememberMe
             };
         }
 
-        private async Task<string> GenerateAccessToken(User user)
+        private string EncryptToken(string innerJwt)
         {
-            var userRoles = await userManager.GetRolesAsync(user);
-            var userClaims = await userManager.GetClaimsAsync(user);
-
-            var claims = new List<Claim>
-            {
-                new (JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new (ClaimTypes.Name, user.UserName ?? string.Empty),
-                new (JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
-                new (JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-            };
-
-            claims.AddRange(userClaims);
-            var roleClaims = userRoles.Select(x => new Claim(ClaimTypes.Role, x));
-            claims.AddRange(roleClaims);
-
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(5),
-                Issuer = _jwtSettings.Issuer,
-                Audience = _jwtSettings.Audience,
-                SigningCredentials = new SigningCredentials
-                (
-                    new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key)),
-                    SecurityAlgorithms.HmacSha512Signature
-                )
-            };
+            var rsa = RSA.Create();
+            rsa.ImportFromPem(_keySettings.PublicKey);
+            var encryptingCredentials = new EncryptingCredentials
+            (
+                new RsaSecurityKey(rsa.ExportParameters(false)),
+                SecurityAlgorithms.RsaOAEP,
+                SecurityAlgorithms.Aes256CbcHmacSha512
+            );
             var tokenHandler = new JsonWebTokenHandler();
-            return tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.EncryptToken(innerJwt, encryptingCredentials);
         }
 
-        private async Task<string> GetUsernameFromExpiredToken(string accessToken)
+        private string DecryptToken(string token)
         {
+            var rsa = RSA.Create();
+            rsa.ImportFromPem(_keySettings.PrivateKey);
             var tokenValidationParameters = new TokenValidationParameters
             {
-                ValidIssuer = _jwtSettings.Issuer,
-                ValidAudience = _jwtSettings.Audience,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key)),
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = false,
-                ValidateIssuerSigningKey = true
+                TokenDecryptionKey = new RsaSecurityKey(rsa)
             };
             var tokenHandler = new JsonWebTokenHandler();
-            var validationResult = await tokenHandler.ValidateTokenAsync(accessToken, tokenValidationParameters);
-            if (!validationResult.IsValid || validationResult.ClaimsIdentity.Name == null)
-            {
-                throw new UnauthorizedException("Invalid token.");
-            }
-            return validationResult.ClaimsIdentity.Name;
+            var jwt = new JsonWebToken(token);
+
+            return tokenHandler.DecryptToken(jwt, tokenValidationParameters);
         }
     }
 }

@@ -5,10 +5,10 @@ using Sheetient.Domain.Enums;
 
 namespace Sheetient.App.Dtos.Sheet
 {
-    public class LabelFieldDto : FieldDto, IMapping<LabelField>
+    public record LabelFieldDto : FieldDto, IMapping<LabelField>
     {
-        public override FieldType FieldType { get; set; } = FieldType.Label;
-        public string Text { get; set; } = string.Empty;
+        public override FieldType FieldType { get; init; } = FieldType.Label;
+        public string Text { get; init; } = string.Empty;
 
         public void Mapping(Profile profile)
         {

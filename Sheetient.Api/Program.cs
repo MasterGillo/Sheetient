@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Sheetient.Api.Middleware;
@@ -45,6 +46,9 @@ namespace Sheetient.Api
             builder.Services.Configure<JwtSettings>(jwtSection);
             var jwtSettings = jwtSection.Get<JwtSettings>();
 
+            var keySection = builder.Configuration.GetSection("EncryptionKeys");
+            builder.Services.Configure<KeySettings>(keySection);
+
             builder.Services.AddAuthorization();
 
             if (jwtSettings != null)
@@ -75,6 +79,17 @@ namespace Sheetient.Api
             builder.Services.AddScoped<ISheetService, SheetService>();
             builder.Services.AddScoped<IUserService, UserService>();
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(policy =>
+                {
+                    policy
+                        .AllowAnyOrigin()
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                });
+            });
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
@@ -82,6 +97,8 @@ namespace Sheetient.Api
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
+                IdentityModelEventSource.ShowPII = true;
+                IdentityModelEventSource.LogCompleteSecurityArtifact = true;
             }
 
             app.UseHttpsRedirection();
@@ -90,6 +107,7 @@ namespace Sheetient.Api
             app.UseAuthorization();
 
             app.UseMiddleware<ExceptionHandlingMiddleware>();
+            app.UseCors();
 
             app.MapControllers();
 
