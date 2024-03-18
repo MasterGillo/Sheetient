@@ -13,14 +13,25 @@ using System.Security.Cryptography;
 
 namespace Sheetient.App.Services
 {
-    public class AuthService(
-        UserManager<User> userManager,
-        IOptionsSnapshot<JwtSettings> jwtSettings,
-        IOptionsSnapshot<KeySettings> keySettings,
-        IUserService userService) : IAuthService
+    public class AuthService : IAuthService
     {
-        private readonly JwtSettings _jwtSettings = jwtSettings.Value;
-        private readonly KeySettings _keySettings = keySettings.Value;
+        private readonly UserManager<User> _userManager;
+        private readonly IUserService _userService;
+        private readonly JwtSettings _jwtSettings;
+        private readonly KeySettings _keySettings;
+
+        public AuthService(
+            UserManager<User> userManager,
+            IOptionsSnapshot<JwtSettings> jwtSettings,
+            IOptionsSnapshot<KeySettings> keySettings,
+            IUserService userService)
+        {
+            _userManager = userManager;
+            _jwtSettings = jwtSettings.Value;
+            _keySettings = keySettings.Value;
+            _userService = userService;
+        }
+
         public async Task Register(AuthRegisterRequestDto authRegisterRequestDto)
         {
             var user = new User
@@ -28,18 +39,18 @@ namespace Sheetient.App.Services
                 UserName = authRegisterRequestDto.DisplayName,
                 Email = authRegisterRequestDto.Email,
             };
-            await userManager.CreateAsync(user, authRegisterRequestDto.Password);
+            await _userManager.CreateAsync(user, authRegisterRequestDto.Password);
         }
 
         public async Task<AuthTokenResponseDto> Login(AuthLoginRequestDto authLoginRequestDto)
         {
             var user =
                 (MailAddress.TryCreate(authLoginRequestDto.UsernameOrEmail, out _)
-                ? await userManager.FindByEmailAsync(authLoginRequestDto.UsernameOrEmail)
-                : await userManager.FindByNameAsync(authLoginRequestDto.UsernameOrEmail))
+                ? await _userManager.FindByEmailAsync(authLoginRequestDto.UsernameOrEmail)
+                : await _userManager.FindByNameAsync(authLoginRequestDto.UsernameOrEmail))
                 ?? throw new NotFoundException("Invalid credentials.");
 
-            var validPassword = await userManager.CheckPasswordAsync(user, authLoginRequestDto.Password);
+            var validPassword = await _userManager.CheckPasswordAsync(user, authLoginRequestDto.Password);
             if (!validPassword)
             {
                 throw new NotFoundException("Invalid credentials.");
@@ -56,28 +67,28 @@ namespace Sheetient.App.Services
             var jwt = tokenHandler.ReadJsonWebToken(decryptedRefreshToken);
             var username = jwt.GetClaim(ClaimTypes.Name).Value;
             var isPersistent = jwt.GetClaim(ClaimTypes.IsPersistent).Value == true.ToString();
-            var user = (await userManager.FindByNameAsync(username))
+            var user = (await _userManager.FindByNameAsync(username))
                 ?? throw new UnauthorizedException("Invalid token.");
 
-            await userManager.VerifyUserTokenAsync(user, _jwtSettings.RefreshTokenName, _jwtSettings.RefreshTokenName, decryptedRefreshToken);
+            await _userManager.VerifyUserTokenAsync(user, _jwtSettings.RefreshTokenName, _jwtSettings.RefreshTokenName, decryptedRefreshToken);
 
             return await GenerateTokenResponse(user, isPersistent);
         }
 
         public async Task Revoke()
         {
-            var user = (await userManager.FindByNameAsync(userService.UserName))
+            var user = (await _userManager.FindByNameAsync(_userService.UserName))
                 ?? throw new UnauthorizedException("Invalid token.");
 
-            await userManager.RemoveAuthenticationTokenAsync(user, _jwtSettings.RefreshTokenName, _jwtSettings.RefreshTokenName);
+            await _userManager.RemoveAuthenticationTokenAsync(user, _jwtSettings.RefreshTokenName, _jwtSettings.RefreshTokenName);
         }
 
         private async Task<AuthTokenResponseDto> GenerateTokenResponse(User user, bool rememberMe)
         {
-            var accessToken = await userManager.GenerateUserTokenAsync(user, _jwtSettings.AccessTokenName, _jwtSettings.AccessTokenName);
+            var accessToken = await _userManager.GenerateUserTokenAsync(user, _jwtSettings.AccessTokenName, _jwtSettings.AccessTokenName);
 
-            var refreshToken = await userManager.GenerateUserTokenAsync(user, _jwtSettings.RefreshTokenName, _jwtSettings.RefreshTokenName + (rememberMe ? "_persistent" : string.Empty));
-            await userManager.SetAuthenticationTokenAsync(user, _jwtSettings.RefreshTokenName, _jwtSettings.RefreshTokenName, refreshToken);
+            var refreshToken = await _userManager.GenerateUserTokenAsync(user, _jwtSettings.RefreshTokenName, _jwtSettings.RefreshTokenName + (rememberMe ? "_persistent" : string.Empty));
+            await _userManager.SetAuthenticationTokenAsync(user, _jwtSettings.RefreshTokenName, _jwtSettings.RefreshTokenName, refreshToken);
             var encryptedRefreshToken = EncryptToken(refreshToken);
             return new AuthTokenResponseDto
             {

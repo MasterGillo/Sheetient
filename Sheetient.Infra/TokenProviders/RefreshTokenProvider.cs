@@ -7,9 +7,14 @@ using System.Security.Claims;
 using System.Text;
 namespace Sheetient.Infra.TokenProviders
 {
-    public class RefreshTokenProvider<TUser>(IOptionsSnapshot<JwtSettings> jwtSettings) : IUserTwoFactorTokenProvider<TUser> where TUser : IdentityUser<int>
+    public class RefreshTokenProvider<TUser> : IUserTwoFactorTokenProvider<TUser> where TUser : IdentityUser<int>
     {
-        private readonly JwtSettings _jwtSettings = jwtSettings.Value;
+        private readonly JwtSettings _jwtSettings;
+
+        public RefreshTokenProvider(IOptionsSnapshot<JwtSettings> jwtSettings)
+        {
+            _jwtSettings = jwtSettings.Value;
+        }
 
         public Task<bool> CanGenerateTwoFactorTokenAsync(UserManager<TUser> manager, TUser user)
         {
@@ -29,7 +34,7 @@ namespace Sheetient.Infra.TokenProviders
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddDays(7),
+                Expires = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenLifetimeDays),
                 Issuer = _jwtSettings.Issuer,
                 Audience = _jwtSettings.Audience,
                 SigningCredentials = new SigningCredentials
@@ -52,7 +57,7 @@ namespace Sheetient.Infra.TokenProviders
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key)),
                 ValidateIssuer = true,
                 ValidateAudience = true,
-                ValidateLifetime = false,
+                ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
             };
 
@@ -63,7 +68,7 @@ namespace Sheetient.Infra.TokenProviders
                 return false;
             }
 
-            var currentRefreshToken = await manager.GetAuthenticationTokenAsync(user, "refreshToken", "refreshToken");
+            var currentRefreshToken = await manager.GetAuthenticationTokenAsync(user, _jwtSettings.RefreshTokenName, _jwtSettings.RefreshTokenName);
             var jwt = tokenHandler.ReadJsonWebToken(currentRefreshToken);
             var currentJti = jwt.GetClaim(JwtRegisteredClaimNames.Jti).Value;
             if (validationResult.Claims.TryGetValue(JwtRegisteredClaimNames.Jti, out var jti) && jti.ToString() != currentJti)

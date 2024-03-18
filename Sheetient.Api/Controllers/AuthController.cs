@@ -9,14 +9,21 @@ namespace Sheetient.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]/[action]")]
-    public class AuthController(IAuthService authService, IOptionsSnapshot<JwtSettings> jwtSettings) : BaseController
+    public class AuthController : ControllerBase
     {
-        private readonly JwtSettings _jwtSettings = jwtSettings.Value;
+        private readonly IAuthService _authService;
+        private readonly JwtSettings _jwtSettings;
+
+        public AuthController(IAuthService authService, IOptionsSnapshot<JwtSettings> jwtSettings)
+        {
+            _authService = authService;
+            _jwtSettings = jwtSettings.Value;
+        }
 
         [HttpPost]
         public async Task<IActionResult> Register([FromBody] AuthRegisterRequestDto authRegisterRequestDto)
         {
-            await authService.Register(authRegisterRequestDto);
+            await _authService.Register(authRegisterRequestDto);
             return Ok();
         }
 
@@ -24,7 +31,7 @@ namespace Sheetient.Api.Controllers
         [ProducesResponseType<string>(StatusCodes.Status200OK)]
         public async Task<IActionResult> Login([FromBody] AuthLoginRequestDto authLoginRequestDto)
         {
-            var response = await authService.Login(authLoginRequestDto);
+            var response = await _authService.Login(authLoginRequestDto);
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
@@ -33,23 +40,23 @@ namespace Sheetient.Api.Controllers
             };
             if (response.RememberMe)
             {
-                cookieOptions.Expires = DateTime.UtcNow.AddDays(1);
+                cookieOptions.Expires = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenLifetimeDays);
             }
             HttpContext.Response.Cookies.Append(_jwtSettings.RefreshTokenName, response.RefreshToken, cookieOptions);
             return Ok(response.AccessToken);
         }
 
         [HttpPost]
-        [ProducesResponseType<AuthTokenResponseDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType<string>(StatusCodes.Status200OK)]
         public async Task<IActionResult> Refresh()
         {
             var refreshToken = Request.Cookies[_jwtSettings.RefreshTokenName];
             if (string.IsNullOrEmpty(refreshToken))
             {
-                throw new UnauthorizedException();
+                throw new ForbiddenException();
             }
 
-            var response = await authService.Refresh(refreshToken);
+            var response = await _authService.Refresh(refreshToken);
 
             var cookieOptions = new CookieOptions
             {
@@ -59,7 +66,7 @@ namespace Sheetient.Api.Controllers
             };
             if (response.RememberMe)
             {
-                cookieOptions.Expires = DateTime.UtcNow.AddDays(1);
+                cookieOptions.Expires = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenLifetimeDays);
             }
             HttpContext.Response.Cookies.Append(_jwtSettings.RefreshTokenName, response.RefreshToken, cookieOptions);
             return Ok(response.AccessToken);
@@ -68,7 +75,7 @@ namespace Sheetient.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> Revoke()
         {
-            await authService.Revoke();
+            await _authService.Revoke();
             return Ok();
         }
     }

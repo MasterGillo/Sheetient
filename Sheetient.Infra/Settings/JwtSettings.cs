@@ -9,5 +9,7 @@ namespace Sheetient.Infra.Settings
         public required string Key { get; init; }
         public required string AccessTokenName { get; init; }
         public required string RefreshTokenName { get; init; }
+        public int AccessTokenLifetimeMinutes { get; init; }
+        public int RefreshTokenLifetimeDays { get; init; }
     }
 }

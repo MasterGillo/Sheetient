@@ -8,9 +8,15 @@ using System.Text;
 
 namespace Sheetient.Infra.TokenProviders
 {
-    public class AccessTokenProvider<TUser>(IOptionsSnapshot<JwtSettings> jwtSettings) : IUserTwoFactorTokenProvider<TUser> where TUser : IdentityUser<int>
+    public class AccessTokenProvider<TUser> : IUserTwoFactorTokenProvider<TUser> where TUser : IdentityUser<int>
     {
-        private readonly JwtSettings _jwtSettings = jwtSettings.Value;
+        private readonly JwtSettings _jwtSettings;
+
+        public AccessTokenProvider(IOptionsSnapshot<JwtSettings> jwtSettings)
+        {
+            _jwtSettings = jwtSettings.Value;
+        }
+
         public Task<bool> CanGenerateTwoFactorTokenAsync(UserManager<TUser> manager, TUser user)
         {
             return Task.FromResult(false);
@@ -36,7 +42,7 @@ namespace Sheetient.Infra.TokenProviders
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(5),
+                Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenLifetimeMinutes),
                 Issuer = _jwtSettings.Issuer,
                 Audience = _jwtSettings.Audience,
                 SigningCredentials = new SigningCredentials

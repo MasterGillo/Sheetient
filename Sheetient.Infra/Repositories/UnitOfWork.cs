@@ -3,11 +3,16 @@ using Sheetient.Infra.Data;
 
 namespace Sheetient.Infra.Repositories
 {
-    public class UnitOfWork(ApplicationDbContext dbContext) : IUnitOfWork
+    public class UnitOfWork : IUnitOfWork
     {
-        private readonly ApplicationDbContext _dbContext = dbContext;
+        private readonly ApplicationDbContext _dbContext;
         private readonly Dictionary<Type, object> _repositories = [];
         private bool _disposed;
+
+        public UnitOfWork(ApplicationDbContext dbContext)
+        {
+            _dbContext = dbContext;
+        }
 
         public void Commit()
         {

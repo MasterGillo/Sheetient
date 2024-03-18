@@ -11,7 +11,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sheetient.Domain", "Sheetie
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sheetient.Infra", "Sheetient.Infra\Sheetient.Infra.csproj", "{75A12D66-24F1-4086-BEDC-133548ABDF09}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sheetient.Test", "Sheetient.Test\Sheetient.Test.csproj", "{9F11EF92-7877-4831-8567-021243EE9E28}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sheetient.Test", "Sheetient.Test\Sheetient.Test.csproj", "{9F11EF92-7877-4831-8567-021243EE9E28}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{6F8BC988-1BAB-4FEE-B43F-3EAC6D956781}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
