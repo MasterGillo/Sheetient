@@ -10,8 +10,7 @@ namespace Sheetient.App.Validators
             RuleFor(x => x.UsernameOrEmail)
                 .NotEmpty();
             RuleFor(x => x.Password)
-                    .NotEmpty()
-                    .MinimumLength(8);
+                .NotEmpty();
         }
     }
 }

@@ -23,12 +23,25 @@ namespace Sheetient.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> Register([FromBody] AuthRegisterRequestDto authRegisterRequestDto)
         {
-            await _authService.Register(authRegisterRequestDto);
-            return Ok();
+            var response = await _authService.Register(authRegisterRequestDto);
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                SameSite = SameSiteMode.None,
+                Secure = true,
+            };
+            if (response.RememberMe)
+            {
+                cookieOptions.Expires = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenLifetimeDays);
+            }
+            HttpContext.Response.Cookies.Append(_jwtSettings.RefreshTokenName, response.RefreshToken, cookieOptions);
+            return Ok(new AccessTokenResponseDto(response.AccessToken));
         }
 
         [HttpPost]
-        [ProducesResponseType<string>(StatusCodes.Status200OK)]
+        [ProducesResponseType<AccessTokenResponseDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Login([FromBody] AuthLoginRequestDto authLoginRequestDto)
         {
             var response = await _authService.Login(authLoginRequestDto);
@@ -43,11 +56,11 @@ namespace Sheetient.Api.Controllers
                 cookieOptions.Expires = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenLifetimeDays);
             }
             HttpContext.Response.Cookies.Append(_jwtSettings.RefreshTokenName, response.RefreshToken, cookieOptions);
-            return Ok(response.AccessToken);
+            return Ok(new AccessTokenResponseDto(response.AccessToken));
         }
 
         [HttpPost]
-        [ProducesResponseType<string>(StatusCodes.Status200OK)]
+        [ProducesResponseType<AccessTokenResponseDto>(StatusCodes.Status200OK)]
         public async Task<IActionResult> Refresh()
         {
             var refreshToken = Request.Cookies[_jwtSettings.RefreshTokenName];
@@ -69,7 +82,7 @@ namespace Sheetient.Api.Controllers
                 cookieOptions.Expires = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenLifetimeDays);
             }
             HttpContext.Response.Cookies.Append(_jwtSettings.RefreshTokenName, response.RefreshToken, cookieOptions);
-            return Ok(response.AccessToken);
+            return Ok(new AccessTokenResponseDto(response.AccessToken));
         }
 
         [HttpPost]

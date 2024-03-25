@@ -7,9 +7,10 @@ namespace Sheetient.App.Validators
     {
         public AuthRegisterRequestValidator()
         {
-            RuleFor(x => x.DisplayName)
+            RuleFor(x => x.Username)
                 .NotEmpty()
-                .Matches(@"^[\w-\._\@\+]+$").WithMessage("Display Name can only contain letters, numbers, or the special characters -._@+");
+                .MinimumLength(6)
+                .Matches(@"^[\w-\._\@\+]+$");
             RuleFor(x => x.Email)
                 .NotEmpty()
                 .EmailAddress();

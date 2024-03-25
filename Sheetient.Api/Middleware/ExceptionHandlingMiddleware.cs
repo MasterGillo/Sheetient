@@ -34,10 +34,10 @@ namespace Sheetient.Api.Middleware
                 or UnauthorizedAccessException _ => (HttpStatusCode.Unauthorized, exception.Message ?? "Unauthorized."),
                 ForbiddenException _ => (HttpStatusCode.Forbidden, exception.Message ?? "Forbidden."),
                 NotFoundException _ => (HttpStatusCode.NotFound, exception.Message ?? "Not found."),
+                ConflictException _ => (HttpStatusCode.Conflict, exception.Message ?? "Conflict."),
                 _ => (HttpStatusCode.InternalServerError, exception.Message ?? "Internal server error. Please retry later.")
             };
 
-            context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)statusCode;
             await context.Response.WriteAsJsonAsync(message);
         }

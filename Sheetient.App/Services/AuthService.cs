@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json;
 using Sheetient.App.Dtos.Auth;
 using Sheetient.App.Exceptions;
 using Sheetient.App.Services.Interfaces;
@@ -16,12 +17,14 @@ namespace Sheetient.App.Services
     public class AuthService : IAuthService
     {
         private readonly UserManager<User> _userManager;
+        private readonly SignInManager<User> _signInManager;
         private readonly IUserService _userService;
         private readonly JwtSettings _jwtSettings;
         private readonly KeySettings _keySettings;
 
         public AuthService(
             UserManager<User> userManager,
+            SignInManager<User> signInManager,
             IOptionsSnapshot<JwtSettings> jwtSettings,
             IOptionsSnapshot<KeySettings> keySettings,
             IUserService userService)
@@ -30,16 +33,22 @@ namespace Sheetient.App.Services
             _jwtSettings = jwtSettings.Value;
             _keySettings = keySettings.Value;
             _userService = userService;
+            _signInManager = signInManager;
         }
 
-        public async Task Register(AuthRegisterRequestDto authRegisterRequestDto)
+        public async Task<AuthTokenResponseDto> Register(AuthRegisterRequestDto authRegisterRequestDto)
         {
             var user = new User
             {
-                UserName = authRegisterRequestDto.DisplayName,
+                UserName = authRegisterRequestDto.Username,
                 Email = authRegisterRequestDto.Email,
             };
-            await _userManager.CreateAsync(user, authRegisterRequestDto.Password);
+            var result = await _userManager.CreateAsync(user, authRegisterRequestDto.Password);
+            if (!result.Succeeded)
+            {
+                throw new ConflictException(JsonConvert.SerializeObject(result.Errors));
+            }
+            return await GenerateTokenResponse(user, false);
         }
 
         public async Task<AuthTokenResponseDto> Login(AuthLoginRequestDto authLoginRequestDto)
@@ -48,15 +57,23 @@ namespace Sheetient.App.Services
                 (MailAddress.TryCreate(authLoginRequestDto.UsernameOrEmail, out _)
                 ? await _userManager.FindByEmailAsync(authLoginRequestDto.UsernameOrEmail)
                 : await _userManager.FindByNameAsync(authLoginRequestDto.UsernameOrEmail))
-                ?? throw new NotFoundException("Invalid credentials.");
+                ?? throw new UnauthorizedException("Invalid username/email or password.");
 
-            var validPassword = await _userManager.CheckPasswordAsync(user, authLoginRequestDto.Password);
-            if (!validPassword)
+            var result = await _signInManager.PasswordSignInAsync(user.UserName ?? string.Empty, authLoginRequestDto.Password, authLoginRequestDto.RememberMe, lockoutOnFailure: true);
+            if (result.Succeeded)
             {
-                throw new NotFoundException("Invalid credentials.");
+                return await GenerateTokenResponse(user, authLoginRequestDto.RememberMe);
+            }
+            if (result.IsLockedOut)
+            {
+                throw new ForbiddenException("Too many attempts. Account locked for 5 minutes.");
+            }
+            else
+            {
+                throw new UnauthorizedException("Invalid username/email or password.");
             }
 
-            return await GenerateTokenResponse(user, authLoginRequestDto.RememberMe);
+
         }
 
         public async Task<AuthTokenResponseDto> Refresh(string refreshToken)

@@ -39,6 +39,7 @@ namespace Sheetient.Infra
             .AddRoles<Role>()
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders()
+            .AddSignInManager()
             .AddTokenProvider<AccessTokenProvider<User>>(jwtSettings?.AccessTokenName ?? "accessToken")
             .AddTokenProvider<RefreshTokenProvider<User>>(jwtSettings?.RefreshTokenName ?? "refreshToken");
 
