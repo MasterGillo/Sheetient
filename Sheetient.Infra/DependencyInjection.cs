@@ -23,7 +23,7 @@ namespace Sheetient.Infra
             services.AddTransient<IApplicationDbContext>(provider => provider.GetService<ApplicationDbContext>()!);
 
             services.AddDbContext<ApplicationDbContext>(opt =>
-                opt.UseSqlServer(configuration.GetConnectionString("DefaultConnection")),
+                opt.UseNpgsql(configuration.GetConnectionString("DefaultConnection")),
                 ServiceLifetime.Transient);
 
             services.AddIdentityCore<User>(options =>
