@@ -12,6 +12,7 @@ namespace Sheetient.Api.Controllers
     public class SheetController : ControllerBase
     {
         private readonly ISheetService _sheetService;
+
         public SheetController(ISheetService sheetService)
         {
             _sheetService = sheetService;
@@ -34,11 +35,11 @@ namespace Sheetient.Api.Controllers
         }
 
         [HttpGet]
-        [ProducesResponseType<SheetDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType<List<SheetSummaryDto>>(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll()
         {
-            var sheet = await _sheetService.GetSheets();
-            return Ok(sheet);
+            var sheets = await _sheetService.GetSheets();
+            return Ok(sheets);
         }
 
         [HttpPatch("{sheetId:int}")]

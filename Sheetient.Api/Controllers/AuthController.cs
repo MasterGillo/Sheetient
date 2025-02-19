@@ -60,6 +60,13 @@ namespace Sheetient.Api.Controllers
         }
 
         [HttpPost]
+        public async Task<IActionResult> LogOut()
+        {
+            await _authService.LogOut();
+            return Ok();
+        }
+
+        [HttpPost]
         [ProducesResponseType<AccessTokenResponseDto>(StatusCodes.Status200OK)]
         public async Task<IActionResult> Refresh()
         {

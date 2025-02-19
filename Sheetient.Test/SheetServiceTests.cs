@@ -14,6 +14,7 @@ namespace Sheetient.Test
     public class SheetServiceTests
     {
         private readonly SheetDto _sheetDto;
+        private readonly SheetSummaryDto _sheetSummaryDto;
         private readonly Sheet _sheet;
         private readonly int _userId = 1;
 
@@ -24,6 +25,12 @@ namespace Sheetient.Test
         public SheetServiceTests()
         {
             _sheetDto = new SheetDto
+            {
+                Id = 1,
+                Name = "Test Sheet",
+                Description = "This is a test"
+            };
+            _sheetSummaryDto = new SheetSummaryDto
             {
                 Id = 1,
                 Name = "Test Sheet",
@@ -55,8 +62,8 @@ namespace Sheetient.Test
                 .Returns(_sheet);
             mockMapper.Setup(x => x.Map<SheetDto>(It.IsAny<Sheet>()))
                 .Returns(_sheetDto);
-            mockMapper.Setup(x => x.Map<List<SheetDto>>(It.IsAny<List<Sheet>>()))
-                .Returns([_sheetDto]);
+            mockMapper.Setup(x => x.Map<List<SheetSummaryDto>>(It.IsAny<List<Sheet>>()))
+                .Returns([_sheetSummaryDto]);
             mockMapper.Setup(x => x.Map<JsonPatchDocument<Sheet>>(It.IsAny<JsonPatchDocument<SheetDto>>()))
                 .Returns(new JsonPatchDocument<Sheet>());
 
@@ -76,23 +83,23 @@ namespace Sheetient.Test
         [Fact]
         public async Task GetSheet_ReturnsSheetDto()
         {
-            var result = await _sheetService.GetSheet(_sheetDto.Id);
+            var result = await _sheetService.GetSheet(_sheetDto.Id!.Value);
             _mockRepository.Verify(x => x.Get(It.IsAny<Expression<Func<Sheet, bool>>>(), It.IsAny<Func<IQueryable<Sheet>, IIncludableQueryable<Sheet, object>>>()), Times.Once());
             Assert.Equal(_sheetDto, result);
         }
 
         [Fact]
-        public async Task GetSheets_ReturnsSheetDtoList()
+        public async Task GetSheets_ReturnsSheetSummaryDtoList()
         {
             var result = await _sheetService.GetSheets();
             _mockRepository.Verify(x => x.GetMany(It.IsAny<Expression<Func<Sheet, bool>>>()), Times.Once());
-            Assert.Equal([_sheetDto], result);
+            Assert.Equal([_sheetSummaryDto], result);
         }
 
         [Fact]
         public async Task PatchSheet_UpdatesSheet()
         {
-            await _sheetService.PatchSheet(_sheetDto.Id, new JsonPatchDocument<SheetDto>());
+            await _sheetService.PatchSheet(_sheetDto.Id!.Value, new JsonPatchDocument<SheetDto>());
             _mockRepository.Verify(x => x.Get(It.IsAny<Expression<Func<Sheet, bool>>>(), It.IsAny<Func<IQueryable<Sheet>, IIncludableQueryable<Sheet, object>>>()), Times.Once());
             _mockRepository.Verify(x => x.Update(It.IsAny<Sheet>()), Times.Once());
             _mockUnitOfWork.Verify(x => x.Commit(), Times.Once());
@@ -101,7 +108,7 @@ namespace Sheetient.Test
         [Fact]
         public async Task DeleteSheet_DeletesSheet()
         {
-            await _sheetService.DeleteSheet(_sheetDto.Id);
+            await _sheetService.DeleteSheet(_sheetDto.Id!.Value);
             _mockRepository.Verify(x => x.Get(It.IsAny<Expression<Func<Sheet, bool>>>(), It.IsAny<Func<IQueryable<Sheet>, IIncludableQueryable<Sheet, object>>>()), Times.Once());
             _mockRepository.Verify(x => x.Delete(It.IsAny<Sheet>()), Times.Once());
             _mockUnitOfWork.Verify(x => x.Commit(), Times.Once());

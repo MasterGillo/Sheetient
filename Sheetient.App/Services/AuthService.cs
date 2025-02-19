@@ -72,8 +72,11 @@ namespace Sheetient.App.Services
             {
                 throw new UnauthorizedException("Invalid username/email or password.");
             }
+        }
 
-
+        public async Task LogOut()
+        {
+            await _signInManager.SignOutAsync();
         }
 
         public async Task<AuthTokenResponseDto> Refresh(string refreshToken)

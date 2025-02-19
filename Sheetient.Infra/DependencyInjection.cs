@@ -26,7 +26,7 @@ namespace Sheetient.Infra
                 opt.UseNpgsql(configuration.GetConnectionString("DefaultConnection")),
                 ServiceLifetime.Transient);
 
-            services.AddIdentityCore<User>(options =>
+            services.AddIdentity<User, Role>(options =>
             {
                 options.Password.RequiredLength = 8;
                 options.Password.RequireNonAlphanumeric = false;
@@ -36,10 +36,8 @@ namespace Sheetient.Infra
                 options.User.RequireUniqueEmail = true;
                 options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -._+";
             })
-            .AddRoles<Role>()
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders()
-            .AddSignInManager()
             .AddTokenProvider<AccessTokenProvider<User>>(jwtSettings?.AccessTokenName ?? "accessToken")
             .AddTokenProvider<RefreshTokenProvider<User>>(jwtSettings?.RefreshTokenName ?? "refreshToken");
 

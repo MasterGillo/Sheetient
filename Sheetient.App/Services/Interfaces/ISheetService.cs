@@ -7,7 +7,7 @@ namespace Sheetient.App.Services.Interfaces
     {
         public Task<int> CreateSheet(SheetDto sheetDto);
         public Task<SheetDto> GetSheet(int sheetId);
-        public Task<List<SheetDto>> GetSheets();
+        public Task<List<SheetSummaryDto>> GetSheets();
         public Task PatchSheet(int sheetId, JsonPatchDocument<SheetDto> patch);
         public Task DeleteSheet(int sheetId);
     }

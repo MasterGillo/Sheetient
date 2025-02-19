@@ -6,6 +6,7 @@ namespace Sheetient.App.Services.Interfaces
     {
         Task<AuthTokenResponseDto> Register(AuthRegisterRequestDto authRegisterRequestDto);
         Task<AuthTokenResponseDto> Login(AuthLoginRequestDto authLoginRequestDto);
+        Task LogOut();
         Task<AuthTokenResponseDto> Refresh(string refreshToken);
         Task Revoke();
     }
