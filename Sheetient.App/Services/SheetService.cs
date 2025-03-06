@@ -64,13 +64,24 @@ namespace Sheetient.App.Services
             _unitOfWork.Commit();
         }
 
+        public async Task<int> CreatePage(int sheetId, PageDto pageDto)
+        {
+            var page = _mapper.Map<Page>(pageDto);
+            var sheet = await GetSheetEntity(sheetId);
+            sheet.Pages.Add(page);
+            _sheetRepository.Update(sheet);
+            _unitOfWork.Commit();
+
+            return page.Id;
+        }
+
         private async Task<Sheet> GetSheetEntity(int sheetId)
         {
             var sheet = await _sheetRepository.Get(
                 x => x.Id == sheetId && x.UserId == _userService.UserId,
                 x => x.Include(x => x.Pages).ThenInclude(y => y.Fields))
                 ?? throw new NotFoundException($"Sheet {sheetId} does not exist or you do not have access.");
-
+            sheet.Pages.Sort((x, y) => x.Order.CompareTo(y.Order));
             return sheet;
         }
     }

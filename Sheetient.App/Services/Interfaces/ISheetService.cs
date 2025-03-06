@@ -10,5 +10,7 @@ namespace Sheetient.App.Services.Interfaces
         public Task<List<SheetSummaryDto>> GetSheets();
         public Task PatchSheet(int sheetId, JsonPatchDocument<SheetDto> patch);
         public Task DeleteSheet(int sheetId);
+
+        public Task<int> CreatePage(int sheetId, PageDto pageDto);
     }
 }

@@ -55,5 +55,12 @@ namespace Sheetient.Api.Controllers
             await _sheetService.DeleteSheet(sheetId);
             return Ok();
         }
+
+        [HttpPost("{sheetId:int}/page")]
+        public async Task<IActionResult> CreatePage(int sheetId, [FromBody] PageDto pageDto)
+        {
+            var id = await _sheetService.CreatePage(sheetId, pageDto);
+            return Ok(id);
+        }
     }
 }
